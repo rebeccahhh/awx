@@ -121,7 +121,8 @@
 
     - block:
         - name: detect requirements.(yml/yaml)
-          stat: path={{project_path|quote}}/roles/requirements{{ item.ext }}
+          stat: 
+            path: "{{project_path|quote}}/roles/requirements{{ item.ext }}"
           with_items: "{{ yaml_exts }}"
           register: doesRequirementsExist
 
@@ -144,7 +145,7 @@
     - block:
         - name: detect collections/requirements.(yml/yaml)
           stat: 
-            path: {{project_path|quote}}/collections/requirements{{ item.ext }}
+            path: "{{project_path|quote}}/collections/requirements{{ item.ext }}"
           with_items: "{{ yaml_exts }}"
           register: doesCollectionRequirementsExist
 
