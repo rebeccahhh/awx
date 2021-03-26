@@ -1096,11 +1096,11 @@ ManagedCredentialType(
                 'type': 'string',
             },
             {
-                'id': 'token',
+                'id': 'password',
                 'label': ugettext_noop('Password/Token'),
                 'type': 'string',
                 'secret': True,
-                'help_text': ugettext_noop('A token to use to authenticate with. ' 'This should not be set if username/password are being used.'),
+                'help_text': ugettext_noop('A password or token used to authenticate with'),
             },
         ],
         'required': ['host'],

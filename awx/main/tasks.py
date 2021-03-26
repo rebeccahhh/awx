@@ -907,7 +907,9 @@ class BaseTask(object):
         }
 
         if instance.execution_environment.credential:
-            with open('/tmp/auth.json', 'w') as authfile:
+            path = self.build_private_data_dir(instance)
+            with open(path + '/auth.json', 'w') as authfile:
+                # do sanitation for this with  instance.execution_environment.credential.inputs
                 host = instance.execution_environment.credential.get_input('host')
                 username = instance.execution_environment.credential.get_input('username')
                 password = instance.execution_environment.credential.get_input('password')
@@ -915,6 +917,7 @@ class BaseTask(object):
                 auth_data = {'auths': {host: {'auth': b64encode(token.encode('ascii')).decode()}}}
                 authfile.write(json.dumps(auth_data, indent=4))
             authfile.close()
+            os.chmod(authfile.name, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
             params["container_options"].append(f'--authfile={authfile.name}')
 
         pull = instance.execution_environment.pull
