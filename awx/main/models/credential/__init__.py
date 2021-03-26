@@ -1096,7 +1096,7 @@ ManagedCredentialType(
                 'type': 'string',
             },
             {
-                'id': 'password/token',
+                'id': 'token',
                 'label': ugettext_noop('Password/Token'),
                 'type': 'string',
                 'secret': True,
