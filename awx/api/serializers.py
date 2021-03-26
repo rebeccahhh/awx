@@ -1412,6 +1412,11 @@ class ExecutionEnvironmentSerializer(BaseSerializer):
             res['credential'] = self.reverse('api:credential_detail', kwargs={'pk': obj.credential.pk})
         return res
 
+    def validate_credential(self, value):
+        if value and value.kind != 'registry':
+            raise serializers.ValidationError(_('Only Container Registry credentials can be associated with an Execution Environment'))
+        return value
+
 
 class ProjectSerializer(UnifiedJobTemplateSerializer, ProjectOptionsSerializer):
 
