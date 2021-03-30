@@ -889,7 +889,7 @@ class BaseTask(object):
         """
         return os.path.abspath(os.path.join(os.path.dirname(__file__), *args))
 
-    def build_execution_environment_params(self, instance):
+    def build_execution_environment_params(self, instance, private_data_dir=None):
         if settings.IS_K8S:
             return {}
 
@@ -908,8 +908,7 @@ class BaseTask(object):
 
         if instance.execution_environment.credential:
             if ('host', 'username', 'password') in instance.execution_environment.credential.inputs:
-                path = self.build_private_data_dir(instance)
-                with open(path + '/auth.json', 'w') as authfile:
+                with open(private_data_dir + '/auth.json', 'w') as authfile:
                     host = instance.execution_environment.credential.get_input('host')
                     username = instance.execution_environment.credential.get_input('username')
                     password = instance.execution_environment.credential.get_input('password')
@@ -1779,11 +1778,19 @@ class RunJob(BaseTask):
         """
         return settings.AWX_RESOURCE_PROFILING_ENABLED
 
-    def build_execution_environment_params(self, instance):
+    def should_use_proot(self, job):
+        """
+        Return whether this task should use proot.
+        """
+        if job.is_container_group_task:
+            return False
+        return getattr(settings, 'AWX_PROOT_ENABLED', False)
+
+    def build_execution_environment_params(self, instance, private_data_dir=None):
         if settings.IS_K8S:
             return {}
 
-        params = super(RunJob, self).build_execution_environment_params(instance)
+        params = super(RunJob, self).build_execution_environment_params(instance, private_data_dir=None)
         # If this has an insights agent and it is not already mounted then show it
         insights_dir = os.path.dirname(settings.INSIGHTS_SYSTEM_ID_FILE)
         if instance.use_fact_cache and os.path.exists(insights_dir):
@@ -2394,11 +2401,17 @@ class RunProjectUpdate(BaseTask):
             if status == 'successful' and instance.launch_type != 'sync':
                 self._update_dependent_inventories(instance, dependent_inventory_sources)
 
-    def build_execution_environment_params(self, instance):
+    def should_use_proot(self, project_update):
+        """
+        Return whether this task should use proot.
+        """
+        return getattr(settings, 'AWX_PROOT_ENABLED', False)
+
+    def build_execution_environment_params(self, instance, private_data_dir):
         if settings.IS_K8S:
             return {}
 
-        params = super(RunProjectUpdate, self).build_execution_environment_params(instance)
+        params = super(RunProjectUpdate, self).build_execution_environment_params(instance, private_data_dir)
         project_path = instance.get_project_path(check_if_exists=False)
         cache_path = instance.get_cache_path()
         params.setdefault('container_volume_mounts', [])
@@ -2901,7 +2914,7 @@ class RunSystemJob(BaseTask):
     event_model = SystemJobEvent
     event_data_key = 'system_job_id'
 
-    def build_execution_environment_params(self, system_job):
+    def build_execution_environment_params(self, system_job, private_data_dir=None):
         return {}
 
     def build_args(self, system_job, private_data_dir, passwords):
@@ -3017,7 +3030,7 @@ class AWXReceptorJob:
         self.unit_id = None
 
         if self.task and not self.task.instance.is_container_group_task:
-            execution_environment_params = self.task.build_execution_environment_params(self.task.instance)
+            execution_environment_params = self.task.build_execution_environment_params(self.task.instance, private_data_dir=None)
             self.runner_params['settings'].update(execution_environment_params)
 
     def run(self):
