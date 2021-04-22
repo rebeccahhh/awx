@@ -6,6 +6,7 @@ import json
 import yaml
 import logging
 import os
+import subprocess
 import re
 import stat
 import urllib.parse
@@ -887,28 +888,36 @@ def get_current_apps():
     return current_apps
 
 
-def get_custom_venv_choices(custom_paths=None):
+def get_custom_venv_choices():
     from django.conf import settings
 
-    custom_paths = custom_paths or settings.CUSTOM_VENV_PATHS
-    all_venv_paths = [settings.BASE_VENV_PATH] + custom_paths
+    all_venv_paths = []
+
+    all_venv_paths.append(settings.BASE_VENV_PATH)  # get paths from settings
+
+    for root, dir, files in os.walk('../awx_devel/var/lib/awx/venv/'):  # get paths on machine
+        all_venv_paths.append(root)
+
     custom_venv_choices = []
 
-    for custom_venv_path in all_venv_paths:
+    for venv_path in all_venv_paths:
         try:
-            if os.path.exists(custom_venv_path):
+            if os.path.exists(venv_path):
                 custom_venv_choices.extend(
-                    [
-                        os.path.join(custom_venv_path, x, '')
-                        for x in os.listdir(custom_venv_path)
-                        if x != 'awx'
-                        and os.path.isdir(os.path.join(custom_venv_path, x))
-                        and os.path.exists(os.path.join(custom_venv_path, x, 'bin', 'activate'))
-                    ]
+                    [os.path.join(venv_path.replace('..', ''), x, '') for x in os.listdir(venv_path) if os.path.exists(os.path.join(venv_path, x, 'activate'))]
                 )
         except Exception:
             logger.exception("Encountered an error while discovering custom virtual environments.")
     return custom_venv_choices
+
+
+def get_custom_venv_pip_freeze(venv_path):
+    try:
+        freeze_data = subprocess.run([f"{venv_path}/pip", "freeze"], capture_output=True)
+        pip_data = (freeze_data.stdout).decode('ascii')
+    except Exception:
+        logger.exception("Encountered an error while discovering Pip Freeze data for custom virtual environments.")
+    return pip_data
 
 
 def is_ansible_variable(key):
