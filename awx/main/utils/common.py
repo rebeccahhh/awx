@@ -6,6 +6,7 @@ import json
 import yaml
 import logging
 import os
+import subprocess
 import re
 import stat
 import urllib.parse
@@ -890,8 +891,15 @@ def get_current_apps():
 def get_custom_venv_choices(custom_paths=None):
     from django.conf import settings
 
-    custom_paths = custom_paths or settings.CUSTOM_VENV_PATHS
-    all_venv_paths = [settings.BASE_VENV_PATH] + custom_paths
+    all_venv_paths = []
+
+    all_venv_paths.append(settings.BASE_VENV_PATH)  # get paths from settings
+    if custom_paths:  # get paths from API request
+        all_venv_paths.append(custom_paths)
+    for root, dir, files in os.walk('..'):  # get paths on machine
+        if 'venv' in root and 'lib64' not in root:
+            all_venv_paths.append(root)
+
     custom_venv_choices = []
 
     for custom_venv_path in all_venv_paths:
@@ -901,14 +909,27 @@ def get_custom_venv_choices(custom_paths=None):
                     [
                         os.path.join(custom_venv_path, x, '')
                         for x in os.listdir(custom_venv_path)
-                        if x != 'awx'
-                        and os.path.isdir(os.path.join(custom_venv_path, x))
-                        and os.path.exists(os.path.join(custom_venv_path, x, 'bin', 'activate'))
+                        if os.path.exists(os.path.join(custom_venv_path, x, 'activate'))
                     ]
                 )
         except Exception:
             logger.exception("Encountered an error while discovering custom virtual environments.")
     return custom_venv_choices
+
+
+def get_custom_venv_pip_freeze(custom_venvs):
+    # import sdb; sdb.set_trace()
+    pip_data = {}
+    for venv_path in custom_venvs:
+        if '..' in venv_path:
+            venv_path = venv_path.replace('..', '')
+        try:
+            data = subprocess.Popen([f"source {venv_path}activate && pip freeze"], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, shell=True)
+            stdout, stderr = data.communicate()
+            pip_data[venv_path] = stdout
+        except:
+            logger.exception("failed")
+    return pip_data
 
 
 def is_ansible_variable(key):
