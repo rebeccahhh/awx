@@ -888,17 +888,15 @@ def get_current_apps():
     return current_apps
 
 
-def get_custom_venv_choices(custom_paths=None):
+def get_custom_venv_choices():
     from django.conf import settings
 
     all_venv_paths = []
 
     all_venv_paths.append(settings.BASE_VENV_PATH)  # get paths from settings
-    if custom_paths:  # get paths from API request
-        all_venv_paths.append(custom_paths)
-    for root, dir, files in os.walk('..'):  # get paths on machine
-        if 'venv' in root and 'lib64' not in root and "python3" not in root:
-            all_venv_paths.append(root)
+
+    for root, dir, files in os.walk('../awx_devel/var/lib/awx/venv/'):  # get paths on machine
+        all_venv_paths.append(root)
 
     custom_venv_choices = []
 
@@ -906,29 +904,19 @@ def get_custom_venv_choices(custom_paths=None):
         try:
             if os.path.exists(venv_path):
                 custom_venv_choices.extend(
-                    [
-                        os.path.join(venv_path, x, '')
-                        for x in os.listdir(venv_path)
-                        if os.path.exists(os.path.join(venv_path, x, 'activate')) and os.path.join(venv_path, x) != '../var/lib/awx/venv/awx/bin'
-                    ]
+                    [os.path.join(venv_path.replace('..', ''), x, '') for x in os.listdir(venv_path) if os.path.exists(os.path.join(venv_path, x, 'activate'))]
                 )
         except Exception:
             logger.exception("Encountered an error while discovering custom virtual environments.")
     return custom_venv_choices
 
 
-def get_custom_venv_pip_freeze(custom_venvs):
-    # import sdb; sdb.set_trace()
-    pip_data = {}
-    for venv_path in custom_venvs:
-        if '..' in venv_path:
-            venv_path = venv_path.replace('..', '')
-        try:
-            freeze_data = subprocess.run([f"{venv_path}/pip", "freeze"], capture_output=True)
-            data = freeze_data.stdout
-            pip_data[venv_path] = data
-        except Exception:
-            logger.exception("Encountered an error while discovering Pip Freeze data for custom virtual environments.")
+def get_custom_venv_pip_freeze(venv_path):
+    try:
+        freeze_data = subprocess.run([f"{venv_path}/pip", "freeze"], capture_output=True)
+        pip_data = (freeze_data.stdout).decode('ascii')
+    except Exception:
+        logger.exception("Encountered an error while discovering Pip Freeze data for custom virtual environments.")
     return pip_data
 
 

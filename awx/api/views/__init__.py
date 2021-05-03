@@ -4519,13 +4519,3 @@ class WorkflowApprovalDeny(RetrieveAPIView):
             return Response({"error": _("This workflow step has already been approved or denied.")}, status=status.HTTP_400_BAD_REQUEST)
         obj.deny(request)
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-
-class CustomVenvs(GenericAPIView):
-    def get(self, request, format=None):
-        custom_venv_choices = get_custom_venv_choices()
-        pip_freeze_data = get_custom_venv_pip_freeze(custom_venv_choices)
-        return Response(str(pip_freeze_data))
-
-    # def post(self, request, *args, **kwargs):
-    #     custom_venv_choices = get_custom_venv_choices()
